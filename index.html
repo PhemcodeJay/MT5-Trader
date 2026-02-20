@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Golden Lion — XAUUSD Live Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>Lion</text></svg>">
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --card: #1a1e2e;
+      --text: #c9d1d9;
+      --green: #4ade80;
+      --red: #f87171;
+      --gold: #fbbf24;
+      --accent: #0ea5e9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0b0c10 0%, #16213e 100%);
+      color: var(--text);
+      margin: 0;
+      padding: 16px;
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(100,100,100,0.2);
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      background: linear-gradient(90deg, var(--gold), var(--green));
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      font-weight: 800;
+    }
+    .btn {
+      padding: 12px 28px;
+      background: var(--green);
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(74,222,128,0.3);
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(74,222,128,0.4); }
+    .btn:disabled { background: #555; transform: none; box-shadow: none; cursor: not-allowed; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    @media (min-width: 1024px) {
+      .row { grid-template-columns: 2.5fr 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 1px solid rgba(100,100,100,0.1);
+    }
+    #chart {
+      height: 480px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #16213e;
+    }
+    .price-info {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 16px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .price { font-size: 32px; color: var(--gold); font-weight: 800; }
+    .change { font-weight: bold; }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .signal-box {
+      background: rgba(74,222,128,0.08);
+      border: 1px solid var(--green);
+      border-radius: 12px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      white-space: pre-line;
+      line-height: 1.7;
+      font-size: 14px;
+      margin-top: 12px;
+      min-height: 120px;
+    }
+    .status {
+      margin-left: 12px;
+      font-weight: bold;
+      font-size: 15px;
+    }
+    .trend-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    .bull { background: rgba(74,222,128,0.2); color: var(--green); border: 1px solid var(--green); }
+    .bear { background: rgba(248,113,113,0.2); color: var(--red); border: 1px solid var(--red); }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>Lion Golden Lion — XAUUSD Live</h1>
+  <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+    <div style="font-size:15px; opacity:0.9;">
+      Local Time: <strong id="clock">--:--:--</strong>
+    </div>
+    <button id="genBtn" class="btn">Generate Signal Now</button>
+    <span id="status" class="status"></span>
+  </div>
+</header>
+
+<div class="row">
+  <div class="card">
+    <h2 style="margin:0 0 10px 0; color:var(--green);">XAUUSD • 5-Minute Chart (Live)</h2>
+    <div id="chart"></div>
+    <div class="price-info">
+      <div>Current Price: <span class="price" id="price">---.---</span></div>
+      <div>Change: <span id="change" class="change">--.--%</span></div>
+      <div>Signal: <strong id="signalLabel" style="color:#aaa;">Waiting for signal...</strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0; color:var(--green);">Latest Signal</h3>
+    <div id="signalBox" class="signal-box">
+Scanning in background...
+Click "Generate Signal Now" for instant analysis.
+    </div>
+    <div id="trendTag"></div>
+  </div>
+</div>
+
+<script>
+// Live Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+}, 1000);
+
+// Chart
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout: { background: { color: '#16213e' }, textColor: '#c9d1d9' },
+  grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+  crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  timeScale: { borderColor: '#334155', timeVisible: true, secondsVisible: false },
+  rightPriceScale: { borderColor: '#334155' },
+  width: document.getElementById('chart').clientWidth,
+  height: 480,
+});
+
+const candleSeries = chart.addCandlestickSeries({
+  upColor: '#22c55e', upBorderColor: '#22c55e', wickUpColor: '#22c55e',
+  downColor: '#ef4444', downBorderColor: '#ef4444', wickDownColor: '#ef4444',
+});
+
+let lastPrice = null;
+
+// Fetch Candles
+async function loadCandles() {
+  try {
+    const res = await fetch('http://localhost:8000/candles');
+    if (!res.ok) throw new Error("No data");
+    const data = await res.json();
+    if (!data.candles || data.candles.length === 0) return;
+
+    const formatted = data.candles.map(c => ({
+      time: c.time,
+      open: Number(c.open),
+      high: Number(c.high),
+      low: Number(c.low),
+      close: Number(c.close)
+    }));
+
+    candleSeries.setData(formatted);
+
+    const latest = formatted[formatted.length - 1];
+    if (latest) {
+      updatePrice(latest.close);
+      chart.timeScale().fitContent();
+    }
+  } catch (e) {
+    console.log("Waiting for backend candles...");
+  }
+}
+
+// Update Price
+function updatePrice(price) {
+  price = Number(price);
+  document.getElementById('price').textContent = price.toFixed(3);
+
+  if (lastPrice !== null) {
+    const change = ((price - lastPrice) / lastPrice * 100).toFixed(2);
+    const el = document.getElementById('change');
+    el.textContent = (change > 0 ? '+' : '') + change + '%';
+    el.className = change > 0 ? 'green' : 'red';
+  }
+  lastPrice = price;
+}
+
+// Load Signal
+async function loadSignal() {
+  try {
+    const res = await fetch('http://localhost:8000/latest_signal');
+    if (!res.ok) return;
+    const sig = await res.json();
+
+    if (sig && sig.Side) {
+      const text = `SIDE       → ${sig.Side.toUpperCase()}
+TYPE       → ${sig.Type}
+SCORE      → ${sig.Score}%
+ENTRY      → ${sig.Entry}
+TAKE PROFIT→ ${sig.TP}
+STOP LOSS  → ${sig.SL}
+LIQUIDATION→ ${sig.Liq}
+TIME       → ${sig.Time}
+CONFLUENCE → ${sig.Confluence || '4H→1H→15M→5M'}`;
+
+      document.getElementById('signalBox').textContent = text;
+      document.getElementById('signalLabel').textContent = `${sig.Side} ${sig.Type} (${sig.Score}%)`;
+      document.getElementById('signalLabel').style.color = sig.Side === 'Buy' ? '#4ade80' : '#f87171';
+
+      const tag = document.getElementById('trendTag');
+      tag.textContent = sig.Trend || sig.Type;
+      tag.className = 'trend-tag ' + (sig.Side === 'Buy' ? 'bull' : 'bear');
+    }
+  } catch (e) {
+    document.getElementById('signalBox').textContent = "Python backend not running.\nStart your scanner first!";
+  }
+}
+
+// Generate Signal Button
+document.getElementById('genBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('genBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.textContent = 'Analyzing 4H→1H→15M→5M...';
+  status.style.color = '#fbbf24';
+
+  try {
+    const res = await fetch('http://localhost:8000/trigger', { method: 'POST' });
+    if (res.ok) {
+      status.textContent = 'Signal Generated!';
+      status.style.color = '#4ade80';
+      setTimeout(() => {
+        loadSignal();
+        loadCandles();
+      }, 1800);
+    } else {
+      throw new Error();
+    }
+  } catch (e) {
+    status.textContent = 'Backend Offline';
+    status.style.color = '#f87171';
+  }
+
+  setTimeout(() => {
+    btn.disabled = false;
+    setTimeout(() => status.textContent = '', 3000);
+  }, 5000);
+});
+
+// Auto Refresh
+loadCandles();
+loadSignal();
+
+setInterval(loadCandles, 30000);  // Chart every 30s
+setInterval(loadSignal, 12000);   // Signal every 12s
+
+// Resize chart on window resize
+window.addEventListener('resize', () => {
+  chart.applyOptions({ width: document.getElementById('chart').clientWidth });
+});
+</script>
+
+</body>
+</html>
